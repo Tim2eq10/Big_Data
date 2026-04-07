@@ -1,0 +1,70 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    platform: linux/amd64
+    environment:
+      - CLUSTER_NAME=testcluster
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+      - ${PWD}/test_data.csv:/hadoop/test_data.csv:ro
+    networks:
+      - hadoop_network
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    platform: linux/amd64
+#    container_name: datanode
+    environment:
+      - CLUSTER_NAME=testcluster
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    depends_on:
+      - namenode
+    volumes:
+      - datanode-data:/hadoop/dfs/data
+    networks:
+      - hadoop_network
+
+  spark:
+    build:
+      context: ./spark_app
+      dockerfile: Dockerfile
+    container_name: spark
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+      - SPARK_MASTER=spark://spark:7077
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/bin/python3
+    ports:
+      - "8080:8080"   # Spark UI
+      - "7077:7077"   # Spark Master port
+    depends_on:
+      - namenode
+      - datanode
+    networks:
+      - hadoop_network
+
+  spark-worker:
+    image: bde2020/spark-worker:3.1.1-hadoop3.2
+    platform: linux/amd64
+    container_name: spark-worker
+    environment:
+      - SPARK_MASTER=spark://spark:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1g
+    depends_on:
+      - spark
+    networks:
+      - hadoop_network
+
+networks:
+  hadoop_network:
+    driver: bridge
+
+volumes:
+  namenode-data:
+  datanode-data:
