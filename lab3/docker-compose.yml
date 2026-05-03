@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Сервер MLflow для логирования экспериментов
+  mlflow:
+    image: python:3.9-slim
+    command: >
+      sh -c "pip install mlflow==2.9.2 && 
+             mkdir -p /mlflow && 
+             mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:/mlflow"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow_data:/mlflow   # сохраняем артефакты MLflow на хост
+
+  # Основное приложение пайплайна
+  app:
+    build: .
+    depends_on:
+      - mlflow
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_ALLOWED_HOSTS=*
+      - GIT_PYTHON_REFRESH=quiet
+    volumes:
+      # Монтируем папку ./data с хоста в /app/data внутри контейнера
+      - ./data:/app/data
+      # Монтируем папку для логов
+      - ./logs:/app/logs
+    command: python src/main.py

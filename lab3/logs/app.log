@@ -1,0 +1,66 @@
+2026-05-03 19:57:49,029 - INFO - Starting Flight Lakehouse pipeline with Polars + Delta
+2026-05-03 19:57:49,029 - INFO - Loading CSV from /app/data/flight_data_2018_2024.csv into Bronze with daily batches
+2026-05-03 19:57:49,708 - INFO - Using FlightDate column for daily grouping
+2026-05-03 19:57:49,750 - INFO - Found 31 daily batches (first 5: ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05'])
+2026-05-03 19:57:49,765 - INFO - Processing batch 2024-01-01, rows: 18338
+2026-05-03 19:57:50,022 - INFO - Processing batch 2024-01-02, rows: 20169
+2026-05-03 19:57:50,211 - INFO - Processing batch 2024-01-03, rows: 19693
+2026-05-03 19:57:50,382 - INFO - Processing batch 2024-01-04, rows: 19202
+2026-05-03 19:57:50,546 - INFO - Processing batch 2024-01-05, rows: 19251
+2026-05-03 19:57:50,699 - INFO - Processing batch 2024-01-06, rows: 18108
+2026-05-03 19:57:50,858 - INFO - Processing batch 2024-01-07, rows: 20021
+2026-05-03 19:57:51,023 - INFO - Processing batch 2024-01-08, rows: 19637
+2026-05-03 19:57:51,186 - INFO - Processing batch 2024-01-09, rows: 17822
+2026-05-03 19:57:51,337 - INFO - Processing batch 2024-01-10, rows: 17893
+2026-05-03 19:57:51,492 - INFO - Processing batch 2024-01-11, rows: 19709
+2026-05-03 19:57:51,657 - INFO - Processing batch 2024-01-12, rows: 19812
+2026-05-03 19:57:51,821 - INFO - Processing batch 2024-01-13, rows: 16501
+2026-05-03 19:57:51,973 - INFO - Processing batch 2024-01-14, rows: 18648
+2026-05-03 19:57:52,132 - INFO - Processing batch 2024-01-15, rows: 19804
+2026-05-03 19:57:52,300 - INFO - Processing batch 2024-01-16, rows: 17574
+2026-05-03 19:57:52,447 - INFO - Processing batch 2024-01-17, rows: 17973
+2026-05-03 19:57:52,605 - INFO - Processing batch 2024-01-18, rows: 19872
+2026-05-03 19:57:52,769 - INFO - Processing batch 2024-01-19, rows: 19912
+2026-05-03 19:57:52,938 - INFO - Processing batch 2024-01-20, rows: 16580
+2026-05-03 19:57:53,086 - INFO - Processing batch 2024-01-21, rows: 19750
+2026-05-03 19:57:53,254 - INFO - Processing batch 2024-01-22, rows: 19739
+2026-05-03 19:57:53,420 - INFO - Processing batch 2024-01-23, rows: 17516
+2026-05-03 19:57:53,570 - INFO - Processing batch 2024-01-24, rows: 17929
+2026-05-03 19:57:53,723 - INFO - Processing batch 2024-01-25, rows: 19891
+2026-05-03 19:57:53,891 - INFO - Processing batch 2024-01-26, rows: 19923
+2026-05-03 19:57:54,058 - INFO - Processing batch 2024-01-27, rows: 16591
+2026-05-03 19:57:54,207 - INFO - Processing batch 2024-01-28, rows: 19822
+2026-05-03 19:57:54,372 - INFO - Processing batch 2024-01-29, rows: 19563
+2026-05-03 19:57:54,538 - INFO - Processing batch 2024-01-30, rows: 17396
+2026-05-03 19:57:54,691 - INFO - Processing batch 2024-01-31, rows: 17786
+2026-05-03 19:57:54,842 - INFO - Bronze table created at /app/data/bronze with daily version history
+2026-05-03 19:57:54,930 - INFO - Starting Silver transformation
+2026-05-03 19:57:55,127 - INFO - Optimized plan for Silver:
+simple π 14/18 ["Year", "Month", "DayofMonth", ... 11 other columns]
+   WITH_COLUMNS:
+   [[(col("CRSDepTime")) floor_div (100)].alias("hour"), col("DayOfWeek").alias("day_of_week"), when(col("Month").is_between([3, 5])).then(String(spring)).otherwise(when(col("Month").is_between([6, 8])).then(String(summer)).otherwise(when(col("Month").is_between([9, 11])).then(String(fall)).otherwise(String(winter)))).alias("season"), col("Origin").str.concat_horizontal([String(-), col("Dest")]).alias("route")], [] 
+    FILTER [([(col("DepartureDelay").is_not_null()) & (col("ArrivalDelay").is_not_null())]) & ([([(col("DepartureDelay").abs()) <= (360.0)]) & ([(col("ArrivalDelay").abs()) <= (360.0)])])] FROM
+      RENAME
+
+          PYTHON SCAN 
+          PROJECT 14/120 COLUMNS
+          SELECTION: [([(col("Cancelled")) == (0.0)]) & ([(col("Diverted")) == (0.0)])]
+2026-05-03 19:57:55,288 - INFO - Silver rows after cleaning: 555903
+2026-05-03 19:57:55,292 - INFO - Silver table already exists, merging new data
+2026-05-03 19:57:55,539 - INFO - Merged data size: 220721
+2026-05-03 19:57:55,673 - INFO - Running OPTIMIZE (compaction)...
+2026-05-03 19:57:55,677 - INFO - Running Z-ORDER on 'Origin' column...
+2026-05-03 19:57:55,813 - INFO - Silver table saved to /app/data/silver
+2026-05-03 19:57:55,829 - INFO - Creating Gold layers from Silver
+2026-05-03 19:57:55,850 - INFO - Analytical gold rows: 9175
+2026-05-03 19:57:55,877 - INFO - Feature table rows: 220721
+2026-05-03 19:57:55,946 - INFO - VACUUM called on gold_agg table (dry-run)
+2026-05-03 19:57:56,053 - INFO - Z-ORDER on feature table by Airline
+2026-05-03 19:57:56,054 - INFO - Loading feature table for ML
+2026-05-03 19:57:56,110 - INFO - Feature table shape: (220721, 10)
+2026-05-03 19:57:57,676 - INFO - LinearRegression: MSE=273.656, R2=0.873
+2026-05-03 19:58:15,248 - INFO - RandomForestRegressor: MSE=295.490, R2=0.863
+2026-05-03 19:58:17,251 - INFO - LogisticRegression: accuracy=0.912, precision=0.891, recall=0.722
+2026-05-03 19:58:23,807 - INFO - RandomForestClassifier: accuracy=0.901, precision=0.837, recall=0.729
+2026-05-03 19:58:23,811 - INFO - All models trained and logged
+2026-05-03 19:58:23,981 - INFO - Pipeline completed successfully
